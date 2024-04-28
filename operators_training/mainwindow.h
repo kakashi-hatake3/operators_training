@@ -27,13 +27,17 @@ private slots:
     void changePlaybackSpeed();
 
 private:
-    QPushButton *button;
+    QPushButton *button1;
+    QPushButton *button2;
     QLineEdit *lineEdit;
     QComboBox *comboBox;
-    QRadioButton *radioButton;
+    QRadioButton *radioButton1;
+    QRadioButton *radioButton2;
+    QRadioButton *radioButton3;
     QTableWidget *tableWidget;
     QMenu *menu;
     QAction *startAction;
+    QAction *exitAction;
     QAction *finishAction;
     QAction *checkAction;
     QComboBox *testSelector;
