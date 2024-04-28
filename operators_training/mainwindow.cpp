@@ -18,13 +18,18 @@
 #include <QDateTime>
 #include <QTimer>
 #include <QDir>
-#include <QCoreApplication>>
-
+#include <QCoreApplication>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
+
     // Создание элементов управления
+    testSelector = new QComboBox(this);
+    testSelector->addItem("Test 1");
+    testSelector->addItem("Test 2");
+    testSelector->addItem("Test 3");
+
     button = new QPushButton("Button", this);
     lineEdit = new QLineEdit(this);
     comboBox = new QComboBox(this);
@@ -34,6 +39,7 @@ MainWindow::MainWindow(QWidget *parent)
     // Размещение элементов управления
     QWidget *centralWidget = new QWidget(this);
     QVBoxLayout *layout = new QVBoxLayout(centralWidget);
+    layout->addWidget(testSelector);
     layout->addWidget(button);
     layout->addWidget(lineEdit);
     layout->addWidget(comboBox);
@@ -46,6 +52,7 @@ MainWindow::MainWindow(QWidget *parent)
     startAction = menu->addAction("Начать тренировку");
     finishAction = menu->addAction("Завершить тренировку");
     checkAction = menu->addAction("Проверить результат тренировки");
+    speedAction = menu->addAction("Изменить скорость воспроизведения");
 
     // Подключение слотов к сигналам
     connect(startAction, &QAction::triggered, this, &MainWindow::startTraining);
@@ -72,6 +79,23 @@ MainWindow::MainWindow(QWidget *parent)
         QString cellValue = tableWidget->item(row, column)->text();
         saveAction("TableWidget cell changed: (" + QString::number(row) + ", " + QString::number(column) + ") " + cellValue);
     });
+
+    connect(testSelector, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWindow::updateTestLayout);
+
+    connect(speedAction, &QAction::triggered, this, &MainWindow::changePlaybackSpeed);
+
+    setWidgetsEnabled(false);
+
+}
+
+void MainWindow::changePlaybackSpeed()
+{
+    bool ok;
+    double speed = QInputDialog::getDouble(this, "Изменить скорость воспроизведения", "Введите коэффициент ускорения:", playbackSpeed, 0.1, 10.0, 1, &ok);
+    if (ok) {
+        playbackSpeed = speed;
+    }
+    clearFields();
 }
 
 void MainWindow::startTraining()
@@ -79,17 +103,20 @@ void MainWindow::startTraining()
     clearFields();
     bool ok;
     QString user = QInputDialog::getText(this, "Начать тренировку", "Введите фамилию:", QLineEdit::Normal, "", &ok);
-        if (ok && !user.isEmpty()) {
-            currentUser = user;
-            actions.clear();
-            timestamps.clear();
-        }
+    if (ok && !user.isEmpty()) {
+        setWidgetsEnabled(true);
+
+        currentUser = user;
+        actions.clear();
+        timestamps.clear();
+    }
 }
 
 void MainWindow::finishTraining()
 {
     if (!currentUser.isEmpty()) {
-        QString xmlFolderPath = QCoreApplication::applicationDirPath() + "/../training_results/";
+        QString testName = testSelector->currentText();
+        QString xmlFolderPath = QCoreApplication::applicationDirPath() + "/../training_results/" + testName + "/";
         QDir xmlFolder(xmlFolderPath);
         if (!xmlFolder.exists()) {
             xmlFolder.mkpath(".");
@@ -100,15 +127,17 @@ void MainWindow::finishTraining()
         QMessageBox::information(this, "Завершить тренировку", "Тренировка завершена. Результаты сохранены в файл " + filename);
         currentUser.clear();
         clearFields();
+        setWidgetsEnabled(false);
     }
 }
 
 void MainWindow::checkTrainingResult()
 {
-    QString xmlFolderPath = QCoreApplication::applicationDirPath() + "/../training_results/";
+    QString testName = testSelector->currentText();
+    QString xmlFolderPath = QCoreApplication::applicationDirPath() + "/../training_results/" + testName + "/";
     QDir xmlFolder(xmlFolderPath);
     if (!xmlFolder.exists()) {
-        QMessageBox::warning(this, "Проверить результат тренировки", "Папка training_results не найдена.");
+        QMessageBox::warning(this, "Проверить результат тренировки", "Папка " + testName + " не найдена.");
         return;
     }
 
@@ -173,8 +202,9 @@ void MainWindow::replayActions(const QString &filename)
         for (int i = 0; i < replayActions.size(); ++i) {
             QDateTime currentTimestamp = QDateTime::fromString(replayTimestamps[i], Qt::ISODate);
             QDateTime prevTimestamp = (i > 0) ? QDateTime::fromString(replayTimestamps[i - 1], Qt::ISODate) : currentTimestamp;
-            int duration = prevTimestamp.msecsTo(currentTimestamp);
+            int duration = prevTimestamp.msecsTo(currentTimestamp) / playbackSpeed;
             totalDuration += duration;
+
 
             QTimer::singleShot(totalDuration, [=]() {
                 // Воспроизведение действия
@@ -192,9 +222,8 @@ void MainWindow::replayActions(const QString &filename)
                     bool checked = (checkedStr == "1");
                     radioButton->setChecked(checked);
                 } else if (replayActions[i].startsWith("TableWidget cell changed:")) {
-                    qDebug() << "table get";
                     QString cellStr = replayActions[i].mid(27).trimmed();
-                    QList cellCoords = cellStr.split(")")[0].split(", ");
+                    QList<QString> cellCoords = cellStr.split(")")[0].split(", ");
 
                     if (cellCoords.size() == 2) {
                         int row = cellCoords[0].trimmed().toInt();
@@ -205,6 +234,10 @@ void MainWindow::replayActions(const QString &filename)
                 }
             });
         }
+        // Вызов диалогового окна после завершения воспроизведения
+        QTimer::singleShot(totalDuration, [=]() {
+            QMessageBox::information(this, "Воспроизведение завершено", "Воспроизведение записи завершено.");
+        });
     }
 }
 
@@ -223,4 +256,58 @@ void MainWindow::clearFields()
     comboBox->setCurrentIndex(0);
     radioButton->setChecked(false);
     tableWidget->clearContents();
+}
+
+void MainWindow::updateTestLayout(int index)
+{
+    setWidgetsEnabled(true);
+
+    clearFields();
+
+    // Очистка текущего расположения виджетов
+    QWidget *centralWidget = this->centralWidget();
+    QLayout *layout = centralWidget->layout();
+    while (layout->count() > 1) {
+        QLayoutItem *item = layout->takeAt(1);
+        if (item->widget()) {
+            item->widget()->setParent(nullptr);
+        }
+        delete item;
+    }// Обновление расположения виджетов в соответствии с выбранным тестом
+    switch (index) {
+    case 0:
+        // Тест 1
+        layout->addWidget(button);
+        layout->addWidget(lineEdit);
+        layout->addWidget(comboBox);
+        layout->addWidget(radioButton);
+        layout->addWidget(tableWidget);
+        break;
+    case 1:
+        // Тест 2
+        layout->addWidget(lineEdit);
+        layout->addWidget(button);
+        layout->addWidget(tableWidget);
+        layout->addWidget(comboBox);
+        layout->addWidget(radioButton);
+        break;
+    case 2:
+        // Тест 3
+        layout->addWidget(radioButton);
+        layout->addWidget(tableWidget);
+        layout->addWidget(lineEdit);
+        layout->addWidget(comboBox);
+        layout->addWidget(button);
+        break;
+    }
+    setWidgetsEnabled(false);
+}
+
+void MainWindow::setWidgetsEnabled(bool enabled)
+{
+    button->setEnabled(enabled);
+    lineEdit->setEnabled(enabled);
+    comboBox->setEnabled(enabled);
+    radioButton->setEnabled(enabled);
+    tableWidget->setEnabled(enabled);
 }
