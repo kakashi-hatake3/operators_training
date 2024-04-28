@@ -24,6 +24,7 @@ private slots:
     void finishTraining();
     void checkTrainingResult();
     void saveAction(const QString &action);
+    void changePlaybackSpeed();
 
 private:
     QPushButton *button;
@@ -35,6 +36,8 @@ private:
     QAction *startAction;
     QAction *finishAction;
     QAction *checkAction;
+    QComboBox *testSelector;
+    QAction *speedAction;
 
     QString currentUser;
     QStringList actions;
@@ -43,6 +46,10 @@ private:
     void saveActionsToXml(const QString &filename);
     void replayActions(const QString &filename);
     void clearFields();
+    void updateTestLayout(int index);
+    void setWidgetsEnabled(bool isEnable);
+
+    double playbackSpeed = 1.0;
 };
 
 #endif // MAINWINDOW_H
