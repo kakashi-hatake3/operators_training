@@ -1,4 +1,3 @@
-// Подключение заголовочных файлов
 #include "mainwindow.h"
 #include <QPushButton>
 #include <QLineEdit>
@@ -22,7 +21,7 @@
 #include <QCoreApplication>
 #include <QHeaderView>
 
-// Конструктор MainWindow
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
@@ -82,7 +81,7 @@ MainWindow::MainWindow(QWidget *parent)
     finishAction = menu->addAction("Завершить тренировку");
     checkAction = menu->addAction("Проверить результат тренировки");
     speedAction = menu->addAction("Изменить скорость воспроизведения");
-    // Создание кнопки выхода
+    // Создание действия выход
     exitAction = menu->addAction("Выход");
     connect(exitAction, &QAction::triggered, this, &QMainWindow::close);
 
@@ -131,12 +130,14 @@ MainWindow::MainWindow(QWidget *parent)
     updateTestLayout(0);
 
     setWidgetsEnabled(false);
+
 }
 
-// Слот для изменения скорости воспроизведения
+// Изменение скорости воспроизведения
 void MainWindow::changePlaybackSpeed()
 {
     bool ok;
+    //Вызов диалогового окна для изменения скорости
     double speed = QInputDialog::getDouble(this, "Изменить скорость воспроизведения", "Введите коэффициент ускорения:", playbackSpeed, 0.1, 10.0, 1, &ok);
     if (ok) {
         playbackSpeed = speed;
@@ -144,11 +145,12 @@ void MainWindow::changePlaybackSpeed()
     clearFields();
 }
 
-// Слот для начала тренировки
+//Начало тренировки
 void MainWindow::startTraining()
 {
     clearFields();
     bool ok;
+    //Вызов диалогового окна для ввода имени
     QString user = QInputDialog::getText(this, "Начать тренировку", "Введите фамилию:", QLineEdit::Normal, "", &ok);
     if (ok && !user.isEmpty()) {
         setWidgetsEnabled(true);
@@ -159,11 +161,12 @@ void MainWindow::startTraining()
     }
 }
 
-// Слот для завершения тренировки
+//Конец тренировки
 void MainWindow::finishTraining()
 {
     if (!currentUser.isEmpty()) {
         QString testName = testSelector->currentText();
+        // выбор папки для сохранения результатов тренировки
         QString xmlFolderPath = QCoreApplication::applicationDirPath() + "/../training_results/" + testName + "/";
         QDir xmlFolder(xmlFolderPath);
         if (!xmlFolder.exists()) {
@@ -179,14 +182,13 @@ void MainWindow::finishTraining()
     }
 }
 
-// Слот для проверки результатов тренировки
+// воспроизведение тренировки (проверка + выхов replayActions)
 void MainWindow::checkTrainingResult()
 {
     QString testName = testSelector->currentText();
-    QString xmlFolderPath
-
- = QCoreApplication::applicationDirPath() + "/../training_results/" + testName + "/";
+    QString xmlFolderPath = QCoreApplication::applicationDirPath() + "/../training_results/" + testName + "/";
     QDir xmlFolder(xmlFolderPath);
+    //вызов диалогового окна, если нет папки с результатами тренировок, ткое м.б. если еще никто не проходи конткретный тест или их кто-то удалил
     if (!xmlFolder.exists()) {
         QMessageBox::warning(this, "Проверить результат тренировки", "Папка " + testName + " не найдена.");
         return;
@@ -207,7 +209,7 @@ void MainWindow::checkTrainingResult()
     }
 }
 
-// Метод для сохранения действий в XML-файл
+//сохранение в xml файл
 void MainWindow::saveActionsToXml(const QString &filename)
 {
     QFile file(filename);
@@ -230,7 +232,7 @@ void MainWindow::saveActionsToXml(const QString &filename)
     }
 }
 
-// Метод для воспроизведения действий из XML-файла
+// воспроизведение тренировки по xml файлу
 void MainWindow::replayActions(const QString &filename)
 {
     clearFields();
@@ -251,7 +253,7 @@ void MainWindow::replayActions(const QString &filename)
             }
         }
         file.close();
-        // Блокирует меню и выбор тестов на время повтора
+        // Disable menu and test selector during replay
         menu->setEnabled(false);
         testSelector->setEnabled(false);
         int totalDuration = 0;
@@ -260,7 +262,7 @@ void MainWindow::replayActions(const QString &filename)
             QDateTime prevTimestamp = (i > 0) ? QDateTime::fromString(replayTimestamps[i - 1], Qt::ISODate) : currentTimestamp;
             int duration = prevTimestamp.msecsTo(currentTimestamp) / playbackSpeed;
             totalDuration += duration;
-
+            // воспроизводит действия по времени
             QTimer::singleShot(totalDuration, [=]() {
                 // Воспроизведение действия
                 if (replayActions[i].startsWith("Button1 clicked")) {
@@ -309,7 +311,7 @@ void MainWindow::replayActions(const QString &filename)
     }
 }
 
-// Метод для сохранения действия
+//сохраняет в список всех действий пользователя
 void MainWindow::saveAction(const QString &action)
 {
     if (!currentUser.isEmpty()) {
@@ -319,7 +321,7 @@ void MainWindow::saveAction(const QString &action)
     }
 }
 
-// Метод для очистки полей
+// чистит все поля после прохождения тренировки
 void MainWindow::clearFields()
 {
     lineEdit->clear();
@@ -336,7 +338,7 @@ void MainWindow::clearFields()
     radioButton3->setChecked(false);
     radioButton3->setAutoExclusive(true);
 
-    // Очистка ответов из таблицы
+    // Clear answers from table widget
     for (int i = 0; i < tableWidget->rowCount(); ++i) {
         QTableWidgetItem *item = tableWidget->item(i, 1);
         if (item) {
@@ -345,7 +347,7 @@ void MainWindow::clearFields()
     }
 }
 
-// Метод для обновления макета теста
+// перерисовывает приложение в зависимости от выбранного теста
 void MainWindow::updateTestLayout(int index)
 {
     setWidgetsEnabled(true);
@@ -358,9 +360,7 @@ void MainWindow::updateTestLayout(int index)
     while (layout->count() > 1) {
         QLayoutItem *item = layout->takeAt(1);
         if (item->widget()) {
-            item->widget()->setParent(nullptr
-
-);
+            item->widget()->setParent(nullptr);
         }
         delete item;
     }
@@ -501,52 +501,49 @@ void MainWindow::updateTestLayout(int index)
 
         QWidget *radioWidget3 = new QWidget;
         QHBoxLayout *radioLayout3 = new QHBoxLayout(radioWidget3);
-        layout->addWidget(new QLabel("Выберите на что вы бы точно не тратили свое время?"));
-        radioButton1->setText("Футбол");
-        radioButton2->setText("Книга");
-        radioButton3->setText("Сериал");
+        layout->addWidget(new QLabel("Выберите на что вы бы точно не тратили свое время."));
+        radioButton1->setText("Девушки");
+        radioButton2->setText("Учеба");
+        radioButton3->setText("Просмотр сериалов");
         radioLayout3->addWidget(radioButton1);
         radioLayout3->addWidget(radioButton2);
         radioLayout3->addWidget(radioButton3);
         layout->addWidget(radioWidget3);
 
-        layout->addWidget(new QLabel("Напишите, чем вы занимаетесь в свободное время."));
-        tableWidget->setHorizontalHeaderLabels(QStringList() << "Вид деятельности" << "Ответ");
+        layout->addWidget(new QLabel("Напишите, что вы думаете о каждом времяприпровождении."));
+        tableWidget->setHorizontalHeaderLabels(QStringList() << "Досуг" << "Ответ");
         tableWidget->verticalHeader()->hide();
 
-        QTableWidgetItem *item1_3 = new QTableWidgetItem("Чтение");
+        QTableWidgetItem *item1_3 = new QTableWidgetItem("Сходить в бар с друзьями");
         item1_3->setFlags(Qt::ItemIsEditable);
         tableWidget->setItem(0, 0, item1_3);
 
-        QTableWidgetItem *item2_3 = new QTableWidgetItem("Футбол");
+        QTableWidgetItem *item2_3 = new QTableWidgetItem("Лежать на диване");
         item2_3->setFlags(Qt::ItemIsEditable);
         tableWidget->setItem(1, 0, item2_3);
 
-        QTableWidgetItem *item3_3 = new QTableWidgetItem("Кино");
+        QTableWidgetItem *item3_3 = new QTableWidgetItem("Ехать в метро");
         item3_3->setFlags(Qt::ItemIsEditable);
         tableWidget->setItem(2, 0, item3_3);
 
         layout->addWidget(tableWidget);
         break;
     }
-    default:
-        break;
     }
-
-    // Отключение элементов управления в начале тренировки
     setWidgetsEnabled(false);
 }
 
-// Метод для установки активности элементов управления
+// выключает виджеты, чтобы их нельзя было нажимать в нужное время
 void MainWindow::setWidgetsEnabled(bool enabled)
 {
-    testSelector->setEnabled(enabled);
-    comboBox->setEnabled(enabled);
     button1->setEnabled(enabled);
     button2->setEnabled(enabled);
+
     lineEdit->setEnabled(enabled);
+    comboBox->setEnabled(enabled);
     radioButton1->setEnabled(enabled);
     radioButton2->setEnabled(enabled);
     radioButton3->setEnabled(enabled);
+
     tableWidget->setEnabled(enabled);
 }
